@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-NotebookLM 视频生成脚本
+NotebookLM 信息图生成脚本
 
-功能：为 NotebookLM 笔记本中的源文件批量生成视频，并自动下载
+功能：为 NotebookLM 笔记本中的源文件批量生成信息图，并自动下载
 """
 
 import asyncio
@@ -12,80 +12,80 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass, field
 
-from notebooklm.rpc import VideoFormat, VideoStyle
 from notebooklm.rpc.types import SourceStatus
 
-# 支持直接运行和作为包导入
-import sys
-import os
 
-# 添加父目录到 Python 路径，这样可以找到 notebooklm_tools 包
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from notebooklm_tools.utils import sanitize_filename, log_message, run_command, parse_indices
-from notebooklm_tools.client import check_login_status, list_notebooks, list_sources
-from notebooklm_tools.task import BaseGenerationTask, submit_generation_tasks, poll_task_statuses
-from notebooklm_tools.cli import get_user_choice, get_language_choice, get_instructions
+from ..core import sanitize_filename, log_message, run_command, parse_indices
+from ..client import check_login_status, list_notebooks, list_sources
+from ..core.task import BaseGenerationTask, submit_generation_tasks, poll_task_statuses
+from ..cli import get_user_choice, get_language_choice, get_instructions
 
 
 # 配置常量
 MAX_CHECK_ROUNDS = 20  # 最多等待20分钟
 CHECK_INTERVAL = 60  # 检查间隔（秒）
-DEFAULT_INSTRUCTIONS = "手绘风格视频，生动有趣地解释文档核心内容"
+DEFAULT_INSTRUCTIONS = "手绘风格"
 
 
 # 映射字典
-FORMAT_MAP = {
-    VideoFormat.EXPLAINER: "explainer",
-    VideoFormat.BRIEF: "brief",
-    VideoFormat.CINEMATIC: "cinematic"
+ORIENTATION_MAP = {
+    "1": "landscape",
+    "2": "portrait",
+    "3": "square"
+}
+
+DETAIL_MAP = {
+    "1": "standard",
+    "2": "concise",
+    "3": "detailed"
 }
 
 STYLE_MAP = {
-    VideoStyle.AUTO_SELECT: "auto",
-    VideoStyle.CLASSIC: "classic",
-    VideoStyle.WHITEBOARD: "whiteboard",
-    VideoStyle.KAWAII: "kawaii",
-    VideoStyle.ANIME: "anime",
-    VideoStyle.WATERCOLOR: "watercolor",
-    VideoStyle.RETRO_PRINT: "retro-print",
-    VideoStyle.HERITAGE: "heritage",
-    VideoStyle.PAPER_CRAFT: "paper-craft"
+    "1": "sketch-note",
+    "2": "auto",
+    "3": "professional",
+    "4": "bento-grid",
+    "5": "editorial",
+    "6": "instructional",
+    "7": "bricks",
+    "8": "clay",
+    "9": "anime",
+    "10": "kawaii",
+    "11": "scientific"
 }
 
 
 @dataclass
-class VideoGenerationTask(BaseGenerationTask):
-    """视频生成任务"""
+class InfographicGenerationTask(BaseGenerationTask):
+    """信息图生成任务"""
     pass
 
 
-async def submit_video_generation(
+async def submit_infographic_generation(
     notebook_id: str,
     source_id: str,
-    video_format: VideoFormat,
-    video_style: Optional[VideoStyle],
+    orientation: str,
+    detail: str,
+    style: str,
     language: str,
-    instructions: Optional[str]
+    instructions: str
 ) -> str:
     """
-    提交视频生成任务
+    提交信息图生成任务
     
     Returns:
         artifact_id: 生成的 artifact ID
     """
     try:
-        format_str = FORMAT_MAP.get(video_format, "explainer")
-        style_str = STYLE_MAP.get(video_style, "whiteboard") if video_style else "whiteboard"
-        
         # 转义指令中的引号，避免命令执行错误
         escaped_instructions = instructions.replace('"', '\\"') if instructions else ""
-        cmd = f'notebooklm generate video --notebook {notebook_id} --source {source_id} --format {format_str} --style {style_str} --language {language} "{escaped_instructions}" --json'
+        cmd = f'notebooklm generate infographic --notebook {notebook_id} --source {source_id} --orientation {orientation} --detail {detail} --style {style} --language {language} "{escaped_instructions}" --json'
         
         code, stdout, stderr = run_command(cmd)
         
         if code != 0:
-            raise Exception(f"提交视频生成失败: {stderr}")
+            raise Exception(f"提交信息图生成失败: {stderr}")
         
         try:
             result = json.loads(stdout)
@@ -98,17 +98,17 @@ async def submit_video_generation(
         except json.JSONDecodeError:
             raise Exception(f"解析JSON失败: {stdout}")
     except Exception as e:
-        raise Exception(f"提交视频生成任务失败: {str(e)}")
+        raise Exception(f"提交信息图生成任务失败: {str(e)}")
 
 
-async def check_all_video_statuses(notebook_id: str) -> Dict[str, dict]:
+async def check_all_infographic_statuses(notebook_id: str) -> Dict[str, dict]:
     """
-    批量检查所有视频状态
+    批量检查所有信息图状态
     
     Returns:
         dict: artifact_id -> status_info
     """
-    cmd = f'notebooklm artifact list --notebook {notebook_id} --type video --json'
+    cmd = f'notebooklm artifact list --notebook {notebook_id} --type infographic --json'
     code, stdout, stderr = run_command(cmd)
     
     if code != 0:
@@ -135,24 +135,24 @@ async def check_all_video_statuses(notebook_id: str) -> Dict[str, dict]:
         return {}
 
 
-async def check_video_status(notebook_id: str, artifact_id: str) -> Optional[dict]:
+async def check_infographic_status(notebook_id: str, artifact_id: str) -> Optional[dict]:
     """
-    检查单个视频生成状态
+    检查单个信息图生成状态
     
     Returns:
         dict with keys: status (str), is_complete (bool), is_failed (bool)
     """
-    status_map = await check_all_video_statuses(notebook_id)
+    status_map = await check_all_infographic_statuses(notebook_id)
     return status_map.get(artifact_id)
 
 
-async def download_video(
+async def download_infographic(
     notebook_id: str,
     artifact_id: str,
     output_path: Path
 ) -> bool:
     """
-    下载视频
+    下载信息图
     
     Returns:
         bool: 是否成功
@@ -161,7 +161,7 @@ async def download_video(
         # 确保输出目录存在
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        cmd = f'notebooklm download video --notebook {notebook_id} -a {artifact_id} "{str(output_path)}"'
+        cmd = f'notebooklm download infographic --notebook {notebook_id} -a {artifact_id} "{str(output_path)}" --force'
         code, stdout, stderr = run_command(cmd)
         
         if code == 0:
@@ -170,73 +170,68 @@ async def download_video(
             print(f"下载失败: {stderr}")
             return False
     except Exception as e:
-        print(f"下载视频时出错: {str(e)}")
+        print(f"下载信息图时出错: {str(e)}")
         return False
 
 
-def get_video_format_choice() -> VideoFormat:
-    """获取视频格式选择"""
+def get_orientation_choice() -> str:
+    """获取方向选择"""
     options = [
-        ("explainer", "解释型视频 (默认)"),
-        ("brief", "简短摘要"),
-        ("cinematic", "电影风格 (需要 AI Ultra, 忽略风格设置)")
+        ("landscape", "横向 (默认)"),
+        ("portrait", "纵向"),
+        ("square", "方形")
     ]
     
-    choice = get_user_choice("视频格式选择", options, "1")
-    
-    format_map = {
-        "1": VideoFormat.EXPLAINER,
-        "2": VideoFormat.BRIEF,
-        "3": VideoFormat.CINEMATIC
-    }
-    
-    return format_map.get(choice, VideoFormat.EXPLAINER)
+    choice = get_user_choice("方向选择", options, "1")
+    return ORIENTATION_MAP.get(choice, "landscape")
 
 
-def get_video_style_choice() -> Optional[VideoStyle]:
-    """获取视频风格选择"""
+def get_detail_choice() -> str:
+    """获取详细程度选择"""
     options = [
-        ("auto", "自动选择 (默认)"),
-        ("classic", "经典风格"),
-        ("whiteboard", "白板手绘风格"),
+        ("standard", "标准 (默认)"),
+        ("concise", "简洁"),
+        ("detailed", "详细")
+    ]
+    
+    choice = get_user_choice("详细程度选择", options, "1")
+    return DETAIL_MAP.get(choice, "standard")
+
+
+def get_style_choice() -> str:
+    """获取风格选择"""
+    options = [
+        ("sketch-note", "素描笔记风格 (默认)"),
+        ("auto", "自动选择"),
+        ("professional", "专业风格"),
+        ("bento-grid", "便当网格风格"),
+        ("editorial", "编辑风格"),
+        ("instructional", "教学风格"),
+        ("bricks", "砖块风格"),
+        ("clay", "黏土风格"),
+        ("anime", "动画风格"),
         ("kawaii", "可爱风格"),
-        ("anime", "动漫风格"),
-        ("watercolor", "水彩风格"),
-        ("retro-print", "复古印刷风格"),
-        ("heritage", "传统风格"),
-        ("paper-craft", "纸艺风格")
+        ("scientific", "科学风格")
     ]
     
-    choice = get_user_choice("视频风格选择", options, "3")
-    
-    style_map = {
-        "1": VideoStyle.AUTO_SELECT,
-        "2": VideoStyle.CLASSIC,
-        "3": VideoStyle.WHITEBOARD,
-        "4": VideoStyle.KAWAII,
-        "5": VideoStyle.ANIME,
-        "6": VideoStyle.WATERCOLOR,
-        "7": VideoStyle.RETRO_PRINT,
-        "8": VideoStyle.HERITAGE,
-        "9": VideoStyle.PAPER_CRAFT
-    }
-    
-    return style_map.get(choice, VideoStyle.WHITEBOARD)
+    choice = get_user_choice("风格选择", options, "1")
+    return STYLE_MAP.get(choice, "sketch-note")
 
 
-async def process_video_batch(
+async def process_infographic_batch(
     notebook_id: str,
     notebook_name: str,
-    tasks: List[VideoGenerationTask],
-    video_format: VideoFormat,
-    video_style: Optional[VideoStyle],
+    tasks: List[InfographicGenerationTask],
+    orientation: str,
+    detail: str,
+    style: str,
     language: str,
     instructions: str,
     output_dir: Path,
     log_file: Path
 ):
     """
-    批量处理视频生成任务
+    批量处理信息图生成任务
     
     策略：
     1. 先依次提交所有生成任务
@@ -246,17 +241,18 @@ async def process_video_batch(
     """
     # 阶段1：提交所有生成任务
     async def submit_func(notebook_id, source_id, task):
-        artifact_id = await submit_video_generation(
+        artifact_id = await submit_infographic_generation(
             notebook_id=notebook_id,
             source_id=source_id,
-            video_format=video_format,
-            video_style=video_style,
+            orientation=orientation,
+            detail=detail,
+            style=style,
             language=language,
             instructions=instructions
         )
         # 生成输出文件名
         safe_title = sanitize_filename(Path(task.source_title).stem)
-        task.output_filename = f"{safe_title}.mp4"
+        task.output_filename = f"{safe_title}.png"
         return artifact_id
     
     submitted_count, reached_limit = await submit_generation_tasks(
@@ -278,9 +274,9 @@ async def process_video_batch(
     await poll_task_statuses(
         notebook_id=notebook_id,
         tasks=tasks,
-        check_status_func=check_video_status,
-        check_all_statuses_func=check_all_video_statuses,
-        download_func=download_video,
+        check_status_func=check_infographic_status,
+        check_all_statuses_func=check_all_infographic_statuses,
+        download_func=download_infographic,
         output_dir=output_dir,
         log_file=log_file,
         max_check_rounds=MAX_CHECK_ROUNDS,
@@ -315,7 +311,7 @@ async def process_video_batch(
 async def main():
     """主函数"""
     print("=" * 70)
-    print("NotebookLM 视频生成工具")
+    print("NotebookLM 信息图生成工具")
     print("=" * 70)
     
     # 检查登录状态
@@ -428,7 +424,7 @@ async def main():
     
     if skipped_sources:
         print(f"\n⚠ 跳过 {len(skipped_sources)} 个未就绪的源文件")
-        print("  提示: 只有状态为 'READY' 的源文件才能生成视频")
+        print("  提示: 只有状态为 'READY' 的源文件才能生成信息图")
     
     if not ready_sources:
         print("✗ 没有就绪的源文件可以处理")
@@ -437,19 +433,17 @@ async def main():
     
     print(f"✓ 将处理 {len(ready_sources)} 个就绪的源文件")
     
-    # 配置视频生成参数
-    print("\n[步骤 5] 配置视频生成参数")
+    # 配置信息图生成参数
+    print("\n[步骤 5] 配置信息图生成参数")
     
-    video_format = get_video_format_choice()
-    print(f"✓ 视频格式: {video_format.name}")
+    orientation = get_orientation_choice()
+    print(f"✓ 方向: {orientation}")
     
-    # cinematic 格式忽略风格设置
-    if video_format == VideoFormat.CINEMATIC:
-        video_style = None
-        print("⊘ 电影风格忽略风格设置")
-    else:
-        video_style = get_video_style_choice()
-        print(f"✓ 视频风格: {video_style.name}")
+    detail = get_detail_choice()
+    print(f"✓ 详细程度: {detail}")
+    
+    style = get_style_choice()
+    print(f"✓ 风格: {style}")
     
     language = get_language_choice()
     print(f"✓ 语言: {language}")
@@ -460,7 +454,7 @@ async def main():
     # 创建输出目录
     print(f"\n[步骤 6] 创建输出目录...")
     safe_notebook_name = sanitize_filename(notebook_name)
-    output_dir = Path("./output") / f"{safe_notebook_name}_videos"
+    output_dir = Path("./output") / f"{safe_notebook_name}_infographics"
     try:
         output_dir.mkdir(parents=True, exist_ok=True)
         print(f"✓ 输出目录: {output_dir}")
@@ -469,12 +463,13 @@ async def main():
         return
     
     # 创建日志文件
-    log_file = output_dir / "video_generation.log"
+    log_file = output_dir / "infographic_generation.log"
     log_message("=" * 70, log_file, "INFO")
-    log_message("开始视频生成任务", log_file, "INFO")
+    log_message("开始信息图生成任务", log_file, "INFO")
     log_message(f"笔记本: {notebook_name} ({notebook_id})", log_file, "INFO")
-    log_message(f"视频格式: {video_format.name}", log_file, "INFO")
-    log_message(f"视频风格: {video_style.name if video_style else 'N/A (Cinematic)'}", log_file, "INFO")
+    log_message(f"方向: {orientation}", log_file, "INFO")
+    log_message(f"详细程度: {detail}", log_file, "INFO")
+    log_message(f"风格: {style}", log_file, "INFO")
     log_message(f"语言: {language}", log_file, "INFO")
     log_message(f"提示词: {instructions}", log_file, "INFO")
     log_message(f"源文件数量: {len(ready_sources)}", log_file, "INFO")
@@ -482,23 +477,24 @@ async def main():
     
     # 创建任务列表
     tasks = [
-        VideoGenerationTask(source_id=s["id"], source_title=s["title"])
+        InfographicGenerationTask(source_id=s["id"], source_title=s["title"])
         for s in ready_sources
     ]
     
-    # 处理视频生成
-    print(f"\n[步骤 7] 开始批量生成视频...")
+    # 处理信息图生成
+    print(f"\n[步骤 7] 开始批量生成信息图...")
     print("=" * 70)
-    print(f"将为 {len(tasks)} 个源文件生成视频")
-    print(f"预计总耗时: 约 {len(tasks) * 10} 分钟")
+    print(f"将为 {len(tasks)} 个源文件生成信息图")
+    print(f"预计总耗时: 约 {len(tasks) * 5} 分钟")
     print("=" * 70)
     
-    await process_video_batch(
+    await process_infographic_batch(
         notebook_id=notebook_id,
         notebook_name=notebook_name,
         tasks=tasks,
-        video_format=video_format,
-        video_style=video_style,
+        orientation=orientation,
+        detail=detail,
+        style=style,
         language=language,
         instructions=instructions,
         output_dir=output_dir,
@@ -535,7 +531,7 @@ async def main():
             print(f"  ... 还有 {len(completed_tasks) - 5} 个成功任务")
         print("  " + "-" * 50)
     
-    print("\n感谢使用 NotebookLM 视频生成工具!")
+    print("\n感谢使用 NotebookLM 信息图生成工具!")
 
 
 if __name__ == "__main__":

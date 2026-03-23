@@ -14,17 +14,12 @@ from dataclasses import dataclass, field
 
 from notebooklm.rpc.types import SourceStatus
 
-# 支持直接运行和作为包导入
-import sys
-import os
 
-# 添加父目录到 Python 路径，这样可以找到 notebooklm_tools 包
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from notebooklm_tools.utils import sanitize_filename, log_message, run_command, parse_indices
-from notebooklm_tools.client import check_login_status, list_notebooks, list_sources
-from notebooklm_tools.task import BaseGenerationTask, submit_generation_tasks, poll_task_statuses
-from notebooklm_tools.cli import get_language_choice, get_instructions
+from ..core import sanitize_filename, log_message, run_command, parse_indices
+from ..client import check_login_status, list_notebooks, list_sources
+from ..core.task import BaseGenerationTask, submit_generation_tasks, poll_task_statuses
+from ..cli import get_language_choice, get_instructions
 
 
 # 配置常量

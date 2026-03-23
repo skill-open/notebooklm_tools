@@ -21,45 +21,68 @@
 pip install notebooklm>=0.3.4
 ```
 
+## 项目结构
+
+```
+notebooklm_tools/
+├── cli/              # 命令行交互模块
+├── client/           # NotebookLM 客户端交互模块
+├── core/             # 核心功能模块
+│   ├── task.py       # 任务管理
+│   └── utils.py      # 工具函数
+├── generators/       # 生成器模块
+│   ├── infographics.py  # 信息图生成
+│   ├── ppts.py          # PPT 生成
+│   └── videos.py        # 视频生成
+└── scripts/          # 脚本目录
+run.py                # 统一入口脚本
+README.md             # 项目说明
+```
+
 ## 使用方法
 
-### 运行视频生成工具
+### 方法1：使用统一入口脚本（推荐）
 
-#### 方法1：使用 python 命令
-```bash
-python <项目路径>\generate_videos.py
-```
-
-#### 方法2：在项目目录内运行
 ```bash
 cd <项目路径>
-python generate_videos.py
+python run.py
 ```
 
-### 运行信息图生成工具
+这将启动一个交互式菜单，您可以选择要使用的功能：
 
-#### 方法1：使用 python 命令
-```bash
-python <项目路径>\generate_infographics.py
+```shellscript
+python run.py
+======================================================================
+NotebookLM 工具集
+======================================================================
+1. 生成信息图
+2. 生成 PPT
+3. 生成视频
+4. 退出
+======================================================================
 ```
 
-#### 方法2：在项目目录内运行
-```bash
-cd <项目路径>
-python generate_infographics.py
-```
+### 方法2：直接运行特定生成器
 
-### 运行 PowerPoint 生成工具
+#### 运行视频生成工具
 
-#### 方法1：使用 python 命令
-```bash
-python <项目路径>\generate_ppts.py
-```
-
-#### 方法2：在项目目录内运行
 ```bash
 cd <项目路径>
-python generate_ppts.py
+python -m notebooklm_tools.generators.videos
+```
+
+#### 运行信息图生成工具
+
+```bash
+cd <项目路径>
+python -m notebooklm_tools.generators.infographics
+```
+
+#### 运行 PowerPoint 生成工具
+
+```bash
+cd <项目路径>
+python -m notebooklm_tools.generators.ppts
 ```
 
 ## 使用案例演示
@@ -67,7 +90,18 @@ python generate_ppts.py
 以下演示运行信息图生成工具的完整流程：
 
 ```bash
-$ python generate_infographics.py
+python run.py
+======================================================================
+NotebookLM 工具集
+======================================================================
+1. 生成信息图
+2. 生成 PPT
+3. 生成视频
+4. 退出
+======================================================================
+请选择功能编号 (1-4): 1
+
+启动信息图生成工具...
 ======================================================================
 NotebookLM 信息图生成工具
 ======================================================================
@@ -157,6 +191,7 @@ NotebookLM 信息图生成工具
 ## 输出目录
 
 生成的 artifacts 保存在 `./output` 目录中，按笔记本名称和 artifact 类型组织：
+
 - 信息图：`./output/{笔记本名称}_infographics/`
 - 视频：`./output/{笔记本名称}_videos/`
 - PowerPoint：`./output/{笔记本名称}_ppts/`
