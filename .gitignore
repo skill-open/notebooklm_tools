@@ -1,0 +1,12 @@
+# Python 编译产物
+__pycache__/
+*.pyc
+
+# 输出目录
+output/
+
+# 日志文件
+*.log
+
+# 环境配置文件
+.env
