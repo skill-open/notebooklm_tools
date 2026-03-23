@@ -152,11 +152,11 @@ def get_ppt_format_choice() -> str:
 def get_ppt_length_choice() -> str:
     """获取PPT长度选择"""
     print("\n[PPT长度选择]")
-    print("  1. default - 默认长度 (默认)")
-    print("  2. short - 短")
-    print("  3. long - 长")
+    print("  1. default - 标准长度 (默认)")
+    print("  2. short - 简短")
+
     
-    choice: str = input("请选择 (1-3) [默认: 1]: ").strip() or "1"
+    choice: str = input("请选择 (1-2) [默认: 1]: ").strip() or "1"
     
     return PPT_LENGTH_MAP.get(choice, "default")
 
