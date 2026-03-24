@@ -317,8 +317,8 @@ async def main():
     # 检查登录状态
     print("\n[步骤 1] 检查登录状态...")
     if not await check_login_status():
-        print("✗ 未登录，请先运行: notebooklm login")
-        print("  提示: 运行 'notebooklm login' 命令进行登录")
+        print("✗ 未登录，请先运行：notebooklm login")
+        print("  提示：登录后请重新执行该命令")
         return
     print("✓ 已登录")
     

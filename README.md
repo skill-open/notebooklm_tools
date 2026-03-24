@@ -5,6 +5,7 @@
 ## 功能说明
 
 - **批量生成**：从 NotebookLM 源文件批量生成信息图、视频和 PowerPoint 演示文稿
+- **源文件整理**：整理 NotebookLM 源文件的核心内容，输出为 Markdown 文件
 - **自动下载**：自动下载生成的 artifacts 到本地
 - **实时状态监控**：监控生成任务状态，提供进度更新
 - **并发处理**：支持并发下载，加快处理速度
@@ -33,7 +34,8 @@ notebooklm_tools/
 ├── generators/       # 生成器模块
 │   ├── infographics.py  # 信息图生成
 │   ├── ppts.py          # PPT 生成
-│   └── videos.py        # 视频生成
+│   ├── videos.py        # 视频生成
+│   └── source_organizer.py  # 源文件整理
 └── scripts/          # 脚本目录
 run.py                # 统一入口脚本
 README.md             # 项目说明
@@ -58,7 +60,8 @@ NotebookLM 工具集
 1. 生成信息图
 2. 生成 PPT
 3. 生成视频
-4. 退出
+4. 整理源文件
+5. 退出
 ======================================================================
 ```
 
@@ -83,6 +86,13 @@ python -m notebooklm_tools.generators.infographics
 ```bash
 cd <项目路径>
 python -m notebooklm_tools.generators.ppts
+```
+
+#### 运行源文件整理工具
+
+```bash
+cd <项目路径>
+python -m notebooklm_tools.generators.source_organizer
 ```
 
 ## 使用案例演示
@@ -190,11 +200,12 @@ NotebookLM 信息图生成工具
 
 ## 输出目录
 
-生成的 artifacts 保存在 `./output` 目录中，按笔记本名称和 artifact 类型组织：
+生成的 artifacts 和整理的源文件保存在 `./output` 目录中，按笔记本名称和类型组织：
 
 - 信息图：`./output/{笔记本名称}_infographics/`
 - 视频：`./output/{笔记本名称}_videos/`
 - PowerPoint：`./output/{笔记本名称}_ppts/`
+- 源文件整理：`./output/{笔记本名称}_organized/`
 
 ## 许可证
 

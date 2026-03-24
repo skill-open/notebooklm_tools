@@ -6,12 +6,13 @@ NotebookLM 工具统一入口脚本
 1. 信息图生成
 2. PPT 生成
 3. 视频生成
+4. 源文件整理
 """
 
 import asyncio
 import sys
 
-from notebooklm_tools.generators import infographics_main, ppts_main, videos_main
+from notebooklm_tools.generators import infographics_main, ppts_main, videos_main, source_organizer_main
 
 def print_menu():
     """打印菜单"""
@@ -21,16 +22,17 @@ def print_menu():
     print("1. 生成信息图")
     print("2. 生成 PPT")
     print("3. 生成视频")
-    print("4. 退出")
+    print("4. 整理源文件")
+    print("5. 退出")
     print("=" * 70)
 
 def get_choice():
     """获取用户选择"""
     while True:
-        choice = input("请选择功能编号 (1-4): ").strip()
-        if choice in ["1", "2", "3", "4"]:
+        choice = input("请选择功能编号 (1-5): ").strip()
+        if choice in ["1", "2", "3", "4", "5"]:
             return choice
-        print("✗ 无效的选择，请输入 1-4 之间的数字")
+        print("✗ 无效的选择，请输入 1-5 之间的数字")
 
 async def main():
     """主函数"""
@@ -48,6 +50,9 @@ async def main():
             print("\n启动视频生成工具...")
             await videos_main()
         elif choice == "4":
+            print("\n启动源文件整理工具...")
+            await source_organizer_main()
+        elif choice == "5":
             print("\n再见！")
             break
         
