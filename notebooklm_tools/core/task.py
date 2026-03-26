@@ -21,6 +21,7 @@ class BaseGenerationTask:
     status: str = "pending"  # pending, generating, completed, failed
     output_filename: Optional[str] = None
     error_message: Optional[str] = None
+    skipped: bool = False  # 是否因文件已存在而跳过
 
 
 async def submit_generation_tasks(
