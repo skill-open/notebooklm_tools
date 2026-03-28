@@ -23,9 +23,11 @@ from ..cli import get_user_choice, get_language_choice, get_instructions
 
 
 # 配置常量
-MAX_CHECK_ROUNDS = 20  # 最多等待20分钟
+MAX_CHECK_ROUNDS = 20  # 最多等待 20 分钟
 CHECK_INTERVAL = 60  # 检查间隔（秒）
 DEFAULT_INSTRUCTIONS = "手绘风格"
+DOWNLOAD_TIMEOUT = 90  # 下载超时时间（秒）
+MAX_DOWNLOAD_RETRIES = 5  # 最大下载重试次数
 
 
 # 映射字典
@@ -149,10 +151,17 @@ async def check_infographic_status(notebook_id: str, artifact_id: str) -> Option
 async def download_infographic(
     notebook_id: str,
     artifact_id: str,
-    output_path: Path
+    output_path: Path,
+    retry_count: int = 0
 ) -> bool:
     """
-    下载信息图
+    下载信息图（带重试机制）
+    
+    Args:
+        notebook_id: 笔记本 ID
+        artifact_id: artifact ID
+        output_path: 输出路径
+        retry_count: 当前重试次数
     
     Returns:
         bool: 是否成功
@@ -162,15 +171,25 @@ async def download_infographic(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
         cmd = f'notebooklm download infographic --notebook {notebook_id} -a {artifact_id} "{str(output_path)}" --force'
-        code, stdout, stderr = run_command(cmd)
+        code, stdout, stderr = run_command(cmd, timeout=DOWNLOAD_TIMEOUT)
         
         if code == 0:
             return True
         else:
-            print(f"下载失败: {stderr}")
-            return False
+            # 下载失败，检查是否需要重试
+            if retry_count < MAX_DOWNLOAD_RETRIES:
+                print(f"  下载失败，{retry_count + 1}/{MAX_DOWNLOAD_RETRIES} 次重试中...：{stderr}")
+                await asyncio.sleep(2 ** retry_count)  # 指数退避：2, 4, 8, 16, 32 秒
+                return await download_infographic(notebook_id, artifact_id, output_path, retry_count + 1)
+            else:
+                print(f"  下载失败（已重试{MAX_DOWNLOAD_RETRIES}次）: {stderr}")
+                return False
     except Exception as e:
-        print(f"下载信息图时出错: {str(e)}")
+        print(f"下载信息图时出错：{str(e)}")
+        if retry_count < MAX_DOWNLOAD_RETRIES:
+            print(f"  下载异常，{retry_count + 1}/{MAX_DOWNLOAD_RETRIES} 次重试中...")
+            await asyncio.sleep(2 ** retry_count)
+            return await download_infographic(notebook_id, artifact_id, output_path, retry_count + 1)
         return False
 
 

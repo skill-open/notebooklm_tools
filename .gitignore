@@ -2,8 +2,11 @@
 __pycache__/
 *.pyc
 
+
 # 输出目录
 output/
+道德经/
+.trae/
 
 # 日志文件
 *.log

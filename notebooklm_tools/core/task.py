@@ -22,6 +22,7 @@ class BaseGenerationTask:
     output_filename: Optional[str] = None
     error_message: Optional[str] = None
     skipped: bool = False  # 是否因文件已存在而跳过
+    download_retry_count: int = 0  # 下载重试次数
 
 
 async def submit_generation_tasks(
@@ -211,7 +212,12 @@ async def poll_task_statuses(
         if completed_tasks:
             print(f"\n  开始下载 {len(completed_tasks)} 个已完成的任务...")
             
-            async def download_task(task: BaseGenerationTask) -> bool:
+            async def download_task(task: BaseGenerationTask) -> Tuple[bool, bool]:
+                """
+                下载任务
+                Returns:
+                    Tuple[是否成功，是否应该重新尝试下载]
+                """
                 output_path: Path = output_dir / task.output_filename
                 success: bool = await download_func(
                     notebook_id=notebook_id,
@@ -221,25 +227,49 @@ async def poll_task_statuses(
                 
                 if success:
                     task.status = "completed"
-                    log_message(f"✓ 下载成功: {task.output_filename}", log_file, "INFO")
+                    log_message(f"✓ 下载成功：{task.output_filename}", log_file, "INFO")
+                    return True, False
                 else:
-                    task.status = "failed"
-                    task.error_message = "下载失败"
-                    log_message(f"✗ 下载失败: {task.output_filename}", log_file, "ERROR")
-                
-                return success
+                    # 下载失败，但不是生成失败，可以重试
+                    task.download_retry_count += 1
+                    log_message(f"✗ 下载失败（第{task.download_retry_count}次）: {task.output_filename}", log_file, "WARNING")
+                    # 返回失败，但可以重新尝试
+                    return False, True
             
             download_tasks = [download_task(task) for task in completed_tasks]
             results = await asyncio.gather(*download_tasks, return_exceptions=True)
             
             download_success = 0
-            for result in results:
-                if result is True:
-                    download_success += 1
+            tasks_to_retry = []
+            
+            for i, result in enumerate(results):
+                if isinstance(result, tuple):
+                    success, should_retry = result
+                    if success:
+                        download_success += 1
+                    elif should_retry:
+                        # 需要重试下载的任务，重新加入待处理队列
+                        task = completed_tasks[i]
+                        task.status = "generating"  # 恢复为 generating 状态，以便下次继续检查
+                        tasks_to_retry.append(task)
+                elif isinstance(result, Exception):
+                    # 异常也视为需要重试
+                    task = completed_tasks[i]
+                    task.download_retry_count += 1
+                    log_message(f"✗ 下载异常（第{task.download_retry_count}次）: {task.source_title} - {result}", log_file, "WARNING")
+                    task.status = "generating"
+                    tasks_to_retry.append(task)
             
             completed_count += download_success
-            failed_count += len(completed_tasks) - download_success
-            print(f"  下载完成: 成功 {download_success}, 失败 {len(completed_tasks) - download_success}")
+            failed_count += len(completed_tasks) - download_success - len(tasks_to_retry)
+            
+            # 将需要重试的任务加回待处理队列
+            still_pending.extend(tasks_to_retry)
+            
+            if tasks_to_retry:
+                print(f"  下载完成：成功 {download_success}, 失败 {len(completed_tasks) - download_success}（{len(tasks_to_retry)} 个将重试下载）")
+            else:
+                print(f"  下载完成：成功 {download_success}, 失败 {len(completed_tasks) - download_success}")
         
         pending_tasks = still_pending
         
