@@ -220,8 +220,8 @@ def get_detail_choice() -> str:
 def get_style_choice() -> str:
     """获取风格选择"""
     options = [
-        ("sketch-note", "素描笔记风格 (默认)"),
-        ("auto", "自动选择"),
+        ("sketch-note", "素描笔记风格"),
+        ("auto", "自动选择 (默认)"),
         ("professional", "专业风格"),
         ("bento-grid", "便当网格风格"),
         ("editorial", "编辑风格"),
@@ -233,8 +233,8 @@ def get_style_choice() -> str:
         ("scientific", "科学风格")
     ]
     
-    choice = get_user_choice("风格选择", options, "1")
-    return STYLE_MAP.get(choice, "sketch-note")
+    choice = get_user_choice("风格选择", options, "2")
+    return STYLE_MAP.get(choice, "auto")
 
 
 async def process_infographic_batch(

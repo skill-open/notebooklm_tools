@@ -2,10 +2,10 @@ import fitz
 import os
 
 # PDF 文件路径
-pdf_path = r"d:\go-code\notebooklm_tools\output\道德经_ppts\9.第九章 功成身退_slides.pdf"
+pdf_path = r"d:\go-code\notebooklm_tools\output\盲点_ppts\10.读一本书不是读完它_slides.pdf"
 
 # 输出目录
-output_dir = r"d:\go-code\notebooklm_tools\output\道德经_ppts\9_功成身退_images"
+output_dir = r"d:\go-code\notebooklm_tools\output\盲点_ppts\10_读一本书不是读完它_images"
 
 # 创建输出目录
 os.makedirs(output_dir, exist_ok=True)
