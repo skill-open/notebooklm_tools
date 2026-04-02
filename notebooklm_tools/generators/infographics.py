@@ -253,38 +253,12 @@ async def process_infographic_batch(
     批量处理信息图生成任务
     
     策略：
-    1. 先检查输出文件是否已存在，跳过已处理的文件
-    2. 对其余文件提交生成任务
-    3. 如果达到请求上限，停止提交
-    4. 然后轮询检查状态，每 1 分钟检查一次
-    5. 完成的立即下载
+    1. 提交生成任务
+    2. 如果达到请求上限，停止提交
+    3. 轮询检查状态，每 1 分钟检查一次
+    4. 完成的立即下载
     """
-    # 阶段 0：检查已存在的文件，跳过已处理的
-    log_message("\n检查已存在的信息图文件...", log_file, "INFO")
-    skipped_count = 0
-    
-    for task in tasks:
-        safe_title = sanitize_filename(Path(task.source_title).stem)
-        task.output_filename = f"{safe_title}.png"
-        output_path = output_dir / task.output_filename
-        
-        if output_path.exists():
-            log_message(f"⊘ 跳过已存在的信息图：{task.output_filename}", log_file, "INFO")
-            task.status = "completed"
-            task.skipped = True
-            skipped_count += 1
-    
-    if skipped_count > 0:
-        log_message(f"已跳过 {skipped_count} 个已处理的信息图", log_file, "INFO")
-    
-    # 过滤出需要处理的任务
-    pending_tasks = [t for t in tasks if t.status != "completed"]
-    
-    if not pending_tasks:
-        log_message("所有信息图都已存在，无需重新生成", log_file, "INFO")
-        return
-    
-    # 阶段 1：提交所有生成任务
+    # 提交所有生成任务
     async def submit_func(notebook_id, source_id, task):
         artifact_id = await submit_infographic_generation(
             notebook_id=notebook_id,
@@ -299,7 +273,7 @@ async def process_infographic_batch(
     
     submitted_count, reached_limit = await submit_generation_tasks(
         notebook_id=notebook_id,
-        tasks=pending_tasks,
+        tasks=tasks,
         submit_func=submit_func,
         log_file=log_file
     )
@@ -332,14 +306,12 @@ async def process_infographic_batch(
     
     final_completed = sum(1 for t in tasks if t.status == "completed")
     final_failed = sum(1 for t in tasks if t.status == "failed")
-    final_skipped = sum(1 for t in tasks if t.skipped)
     total_tasks = len(tasks)
     success_rate = (final_completed / total_tasks * 100) if total_tasks > 0 else 0
     
     log_message(f"总计：{total_tasks}", log_file, "INFO")
     log_message(f"成功：{final_completed}", log_file, "INFO")
     log_message(f"失败：{final_failed}", log_file, "INFO")
-    log_message(f"跳过：{final_skipped}", log_file, "INFO")
     log_message(f"成功率：{success_rate:.1f}%", log_file, "INFO")
     log_message(f"输出目录：{output_dir}", log_file, "INFO")
     log_message(f"日志文件：{log_file}", log_file, "INFO")
@@ -350,13 +322,6 @@ async def process_infographic_batch(
         log_message("\n失败任务详情:", log_file, "WARNING")
         for task in failed_tasks:
             log_message(f"  - {task.source_title}: {task.error_message or '未知错误'}", log_file, "WARNING")
-    
-    # 记录跳过任务详情
-    skipped_tasks = [t for t in tasks if t.skipped]
-    if skipped_tasks:
-        log_message("\n跳过任务详情:", log_file, "INFO")
-        for task in skipped_tasks:
-            log_message(f"  - {task.source_title}: 文件已存在", log_file, "INFO")
 
 
 async def main():
@@ -513,6 +478,31 @@ async def main():
         print(f"✗ 创建输出目录失败: {e}")
         return
     
+    # 检查已存在的信息图文件
+    print(f"\n[步骤 7] 检查已存在的信息图文件...")
+    existing_count = 0
+    sources_to_process = []
+    
+    for source in ready_sources:
+        safe_title = sanitize_filename(Path(source["title"]).stem)
+        output_filename = f"{safe_title}.png"
+        output_path = output_dir / output_filename
+        
+        if output_path.exists():
+            print(f"  ⊘ 跳过已存在: {source['title']}")
+            existing_count += 1
+        else:
+            sources_to_process.append(source)
+    
+    if existing_count > 0:
+        print(f"\n✓ 已跳过 {existing_count} 个已存在的信息图")
+    
+    if not sources_to_process:
+        print("\n✓ 所有信息图都已存在，无需重新生成")
+        return
+    
+    print(f"✓ 将为 {len(sources_to_process)} 个源文件生成信息图")
+    
     # 创建日志文件
     log_file = output_dir / "infographic_generation.log"
     log_message("=" * 70, log_file, "INFO")
@@ -523,17 +513,17 @@ async def main():
     log_message(f"风格: {style}", log_file, "INFO")
     log_message(f"语言: {language}", log_file, "INFO")
     log_message(f"提示词: {instructions}", log_file, "INFO")
-    log_message(f"源文件数量: {len(ready_sources)}", log_file, "INFO")
+    log_message(f"源文件数量: {len(sources_to_process)}", log_file, "INFO")
     log_message("=" * 70, log_file, "INFO")
     
     # 创建任务列表
     tasks = [
         InfographicGenerationTask(source_id=s["id"], source_title=s["title"])
-        for s in ready_sources
+        for s in sources_to_process
     ]
     
     # 处理信息图生成
-    print(f"\n[步骤 7] 开始批量生成信息图...")
+    print(f"\n[步骤 8] 开始批量生成信息图...")
     print("=" * 70)
     print(f"将为 {len(tasks)} 个源文件生成信息图")
     print(f"预计总耗时: 约 {len(tasks) * 5} 分钟")
