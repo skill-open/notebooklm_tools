@@ -466,10 +466,15 @@ async def main() -> None:
     log_message("=" * 60, log_file, "INFO")
     
     # 创建任务列表
-    tasks = [
-        PPTGenerationTask(source_id=s["id"], source_title=s["title"])
-        for s in sources_to_process
-    ]
+    tasks = []
+    for s in sources_to_process:
+        safe_title = sanitize_filename(Path(s["title"]).stem)
+        task = PPTGenerationTask(
+            source_id=s["id"],
+            source_title=s["title"],
+            output_filename=f"{safe_title}_slides.pdf"
+        )
+        tasks.append(task)
     
     # 处理PPT生成
     print(f"\n[步骤 8] 开始批量生成PPT...")
