@@ -43,20 +43,6 @@ DETAIL_MAP = {
     "3": "detailed"
 }
 
-STYLE_MAP = {
-    "1": "sketch-note",
-    "2": "auto",
-    "3": "professional",
-    "4": "bento-grid",
-    "5": "editorial",
-    "6": "instructional",
-    "7": "bricks",
-    "8": "clay",
-    "9": "anime",
-    "10": "kawaii",
-    "11": "scientific"
-}
-
 
 @dataclass
 class InfographicGenerationTask(BaseGenerationTask):
@@ -69,7 +55,6 @@ async def submit_infographic_generation(
     source_id: str,
     orientation: str,
     detail: str,
-    style: str,
     language: str,
     instructions: str
 ) -> str:
@@ -80,9 +65,8 @@ async def submit_infographic_generation(
         artifact_id: 生成的 artifact ID
     """
     try:
-        # 转义指令中的引号，避免命令执行错误
         escaped_instructions = instructions.replace('"', '\\"') if instructions else ""
-        cmd = f'notebooklm generate infographic --notebook {notebook_id} --source {source_id} --orientation {orientation} --detail {detail} --style {style} --language {language} "{escaped_instructions}" --json'
+        cmd = f'notebooklm generate infographic --notebook {notebook_id} --source {source_id} --orientation {orientation} --detail {detail} --language {language} "{escaped_instructions}" --json'
         
         code, stdout, stderr = run_command(cmd)
         
@@ -217,33 +201,12 @@ def get_detail_choice() -> str:
     return DETAIL_MAP.get(choice, "standard")
 
 
-def get_style_choice() -> str:
-    """获取风格选择"""
-    options = [
-        ("sketch-note", "素描笔记风格"),
-        ("auto", "自动选择 (默认)"),
-        ("professional", "专业风格"),
-        ("bento-grid", "便当网格风格"),
-        ("editorial", "编辑风格"),
-        ("instructional", "教学风格"),
-        ("bricks", "砖块风格"),
-        ("clay", "黏土风格"),
-        ("anime", "动画风格"),
-        ("kawaii", "可爱风格"),
-        ("scientific", "科学风格")
-    ]
-    
-    choice = get_user_choice("风格选择", options, "2")
-    return STYLE_MAP.get(choice, "auto")
-
-
 async def process_infographic_batch(
     notebook_id: str,
     notebook_name: str,
     tasks: List[InfographicGenerationTask],
     orientation: str,
     detail: str,
-    style: str,
     language: str,
     instructions: str,
     output_dir: Path,
@@ -265,7 +228,6 @@ async def process_infographic_batch(
             source_id=source_id,
             orientation=orientation,
             detail=detail,
-            style=style,
             language=language,
             instructions=instructions
         )
@@ -458,9 +420,6 @@ async def main():
     detail = get_detail_choice()
     print(f"✓ 详细程度: {detail}")
     
-    style = get_style_choice()
-    print(f"✓ 风格: {style}")
-    
     language = get_language_choice()
     print(f"✓ 语言: {language}")
     
@@ -510,7 +469,6 @@ async def main():
     log_message(f"笔记本: {notebook_name} ({notebook_id})", log_file, "INFO")
     log_message(f"方向: {orientation}", log_file, "INFO")
     log_message(f"详细程度: {detail}", log_file, "INFO")
-    log_message(f"风格: {style}", log_file, "INFO")
     log_message(f"语言: {language}", log_file, "INFO")
     log_message(f"提示词: {instructions}", log_file, "INFO")
     log_message(f"源文件数量: {len(sources_to_process)}", log_file, "INFO")
@@ -540,7 +498,6 @@ async def main():
         tasks=tasks,
         orientation=orientation,
         detail=detail,
-        style=style,
         language=language,
         instructions=instructions,
         output_dir=output_dir,

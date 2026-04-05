@@ -5,6 +5,9 @@ __pycache__/
 
 # 输出目录
 output/
+bao/
+docs/
+pkg/
 道德经/
 .trae/
 
