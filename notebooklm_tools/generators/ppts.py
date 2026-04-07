@@ -25,7 +25,7 @@ from ..cli import get_language_choice, get_instructions
 # 配置常量
 MAX_CHECK_ROUNDS = 20  # 最多等待 20 分钟
 CHECK_INTERVAL = 60  # 检查间隔（秒）
-DEFAULT_INSTRUCTIONS = "请帮我生成一套适合在短视频平台（B站/抖音）分享心得的演示文稿。请按我提供的文字段落顺序，像讲故事一样层层递进。提取每一段中最具启发性、最能引发思考的观点。采用生动有趣的手绘视觉风格。如果是分享深度思考或认知升维的内容，请保留最具冲击力的原话，去掉繁琐的解释，用留白和精炼的短句吸引观众的注意力。"
+DEFAULT_INSTRUCTIONS = "生成给抖音、B站用户分享自己的心得体会的视频PPT。按照文字段落顺序、根据文字内容、制作PPT。风格使用手绘风格。"
 DOWNLOAD_TIMEOUT = 90  # 下载超时时间（秒）
 MAX_DOWNLOAD_RETRIES = 5  # 最大下载重试次数
 
