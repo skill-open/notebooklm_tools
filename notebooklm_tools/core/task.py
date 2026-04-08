@@ -87,7 +87,7 @@ async def submit_generation_tasks(
                 log_message(f"✗ 提交失败: {task.source_title} - {e}", log_file, "ERROR")
         
         # 提交间隔，避免请求过快
-        await asyncio.sleep(1)
+        await asyncio.sleep(5)
     
     failed_count: int = total_tasks - submitted_count
     log_message(f"\n提交完成: 成功 {submitted_count}, 失败 {failed_count}", log_file, "INFO")

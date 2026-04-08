@@ -5,6 +5,7 @@ __pycache__/
 
 # 输出目录
 output/
+lfj/
 bao/
 docs/
 pkg/
